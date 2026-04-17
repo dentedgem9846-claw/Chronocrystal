@@ -1,15 +1,11 @@
-import { ChatClient, type ChatServer } from "simplex-chat";
+import { ChatClient } from "simplex-chat";
+import { type ChatServer, localServer } from "simplex-chat/dist/transport";
 import { T } from "@simplex-chat/types";
 
 export interface IncomingMessage {
 	contactId: number;
 	text: string;
 }
-
-const DEFAULT_SERVER: ChatServer = {
-	host: "localhost",
-	port: "5225",
-};
 
 /** Extract a text message from a newChatItems event.
  * Returns null if the event is not a direct text message. */
@@ -35,8 +31,8 @@ export function extractMessage(event: Record<string, any>): IncomingMessage | nu
 }
 
 /** Connect to simplex-chat CLI and return the ChatClient. */
-export async function connectSimplex(server?: ChatServer): Promise<ChatClient> {
-	const srv = server ?? DEFAULT_SERVER;
+export async function connectSimplex(server?: ChatServer | string): Promise<ChatClient> {
+	const srv = server ?? localServer;
 	const client = await ChatClient.create(srv);
 	return client;
 }
