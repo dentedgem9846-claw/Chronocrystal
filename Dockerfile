@@ -27,9 +27,6 @@ COPY --from=build /app /app
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Data volume for simplex-chat database
-VOLUME /data
-
 ENV SIMPLEX_WS_URL=ws://localhost:5225
 ENV DATA_DIR=/data
 
