@@ -11,9 +11,7 @@
 	"scripts": {
 		"build": "bun run --workspaces --if-present build",
 		"test": "bun run --workspaces --if-present test",
-		"check": "bun run --parallel check:ts check:lint",
-		"check:ts": "tsgo -p tsconfig.json --noEmit",
-		"check:lint": "biome check . --no-errors-on-unmatched",
+		"check": "tsc -p tsconfig.json --noEmit && biome check --write --unsafe . --no-errors-on-unmatched",
 		"lint": "biome lint . --no-errors-on-unmatched",
 		"fmt": "biome format --write . --no-errors-on-unmatched",
 		"fix": "biome check --write --unsafe . --no-errors-on-unmatched"

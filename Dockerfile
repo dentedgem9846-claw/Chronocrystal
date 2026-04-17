@@ -1,7 +1,7 @@
 # Stage 1: Install dependencies
 FROM oven/bun:1 AS build
 WORKDIR /app
-COPY package.json tsconfig.base.json tsconfig.json biome.json bunfig.toml ./
+COPY package.json tsconfig.base.json tsconfig.json biome.json ./
 COPY packages/chronocrystal/package.json packages/chronocrystal/package.json
 RUN bun install --frozen-lockfile
 
