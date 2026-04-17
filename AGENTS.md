@@ -20,6 +20,15 @@
   const { promise, resolve, reject } = Promise.withResolvers<string>();
   ```
 
+## AI-Friendly Code Structure
+
+- **One responsibility per file.** Split when a file grows beyond ~300 lines. Smaller files produce more reliable AI edits and better reasoning.
+- **Predictable patterns.** Similar modules follow the same structure. Command handlers: parse -> validate -> execute -> respond. Services: constructor -> public methods -> private helpers.
+- **Clear naming over clever naming.** No abbreviations, no implicit meaning. `handleUserMessage` not `hndl`, `extractInsight` not `proc`.
+- **Explicit over implicit.** No hidden side effects. State changes visible at the call site. A function named `getX` must not mutate state.
+- **Strategic comments.** Explain WHY, not WHAT. Document domain context, compliance requirements, non-obvious constraints. Never restate what the code already says.
+- **Type safety for domain concepts.** Prefer tagged unions over booleans/strings. Use `interface` for contracts, `type` for unions/aliases. Encode domain distinctions in the type system.
+
 ## Bun Over Node
 
 This project uses Bun. Use Bun APIs where they provide a cleaner alternative; use `node:fs` for operations Bun doesn't cover.
