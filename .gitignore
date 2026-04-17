@@ -137,3 +137,12 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Bun
+bun.lockb
+
+# SimpleX chat database
+simplex_db/
+
+# Data volume
+/data/

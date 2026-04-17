@@ -1,0 +1,26 @@
+{
+	"name": "chronocrystal",
+	"private": true,
+	"type": "module",
+	"packageManager": "bun@1.3.12",
+	"workspaces": {
+		"packages": [
+			"packages/*"
+		]
+	},
+	"scripts": {
+		"build": "bun run --workspaces --if-present build",
+		"test": "bun run --workspaces --if-present test",
+		"check": "bun run --parallel check:ts check:lint",
+		"check:ts": "tsgo -p tsconfig.json --noEmit",
+		"check:lint": "biome check . --no-errors-on-unmatched",
+		"lint": "biome lint . --no-errors-on-unmatched",
+		"fmt": "biome format --write . --no-errors-on-unmatched",
+		"fix": "biome check --write --unsafe . --no-errors-on-unmatched"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.4",
+		"@types/bun": "^1.3",
+		"typescript": "^6.0.2"
+	}
+}
