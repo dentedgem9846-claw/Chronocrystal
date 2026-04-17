@@ -17,7 +17,6 @@
 - Create: `tsconfig.base.json`
 - Create: `tsconfig.json`
 - Create: `biome.json`
-- Create: `bunfig.toml`
 - Modify: `.gitignore`
 
 - [ ] **Step 1: Create root `package.json`**
@@ -36,12 +35,7 @@
 	"scripts": {
 		"build": "bun run --workspaces --if-present build",
 		"test": "bun run --workspaces --if-present test",
-		"check": "bun run --parallel check:ts check:lint",
-		"check:ts": "tsgo -p tsconfig.json --noEmit",
-		"check:lint": "biome check . --no-errors-on-unmatched",
-		"lint": "biome lint . --no-errors-on-unmatched",
-		"fmt": "biome format --write . --no-errors-on-unmatched",
-		"fix": "biome check --write --unsafe . --no-errors-on-unmatched"
+		"check": "tsc -p tsconfig.json --noEmit && biome check --write --unsafe . --no-errors-on-unmatched"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4",
@@ -103,14 +97,11 @@
 
 ```json
 {
+	"$schema": "https://biomejs.dev/schemas/2.3.5/schema.json",
 	"linter": {
 		"enabled": true,
 		"rules": {
 			"recommended": true,
-			"correctness": {
-				"noUnusedImports": "error",
-				"noVoidTypeReturn": "off"
-			},
 			"style": {
 				"noNonNullAssertion": "off",
 				"useConst": "error",
@@ -119,26 +110,16 @@
 			"suspicious": {
 				"noExplicitAny": "off",
 				"noControlCharactersInRegex": "off",
-				"noEmptyInterface": "off",
-				"noConstEnum": "off"
+				"noEmptyInterface": "off"
 			}
 		}
 	},
 	"formatter": {
 		"enabled": true,
+		"formatWithErrors": false,
 		"indentStyle": "tab",
 		"indentWidth": 3,
-		"lineWidth": 120,
-		"lineEnding": "lf"
-	},
-	"javascript": {
-		"formatter": {
-			"semicolons": "always",
-			"quoteStyle": "double",
-			"trailingCommas": "all",
-			"bracketSpacing": true,
-			"arrowParentheses": "asNeeded"
-		}
+		"lineWidth": 120
 	},
 	"files": {
 		"includes": [
@@ -150,22 +131,6 @@
 }
 ```
 
-- [ ] **Step 5: Create `bunfig.toml`**
-
-```toml
-telemetry = false
-
-[install]
-linker = "isolated"
-exact = true
-saveTextLockfile = true
-
-[loader]
-".md" = "text"
-
-[run]
-bun = true
-```
 
 - [ ] **Step 6: Update `.gitignore`**
 
@@ -191,7 +156,7 @@ Expected: installs root devDependencies, creates bun.lock text file, no errors.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add package.json tsconfig.base.json tsconfig.json biome.json bunfig.toml .gitignore
+git add package.json tsconfig.base.json tsconfig.json biome.json .gitignore
 git commit -m "setup: root monorepo workspace with bun, biome, tsconfig"
 ```
 
@@ -214,12 +179,8 @@ git commit -m "setup: root monorepo workspace with bun, biome, tsconfig"
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
 	"scripts": {
-		"check": "biome check . && bun run check:types",
-		"check:types": "tsgo -p tsconfig.json --noEmit",
-		"lint": "biome lint .",
-		"test": "bun test",
-		"fix": "biome check --write --unsafe .",
-		"fmt": "biome format --write ."
+		"check": "tsc -p tsconfig.json --noEmit && biome check --write --unsafe .",
+		"test": "bun test"
 	},
 	"dependencies": {
 		"@mariozechner/pi-coding-agent": "^0.67.6",
@@ -716,7 +677,7 @@ main().catch((err) => {
 
 - [ ] **Step 2: Verify type-check passes**
 
-Run: `cd /workspaces/chronocrystal && bun run check:ts`
+Run: `cd /workspaces/chronocrystal && bun check`
 
 Expected: No type errors. Note: this may fail if `simplex-chat` npm package has incompatible types with our Bun/ES2024 setup. If so, add `skipLibCheck: true` is already set in tsconfig.base.json.
 
@@ -743,7 +704,7 @@ Multi-stage build: first stage installs deps, second stage is the runtime with s
 # Stage 1: Install dependencies
 FROM oven/bun:1 AS build
 WORKDIR /app
-COPY package.json tsconfig.base.json tsconfig.json biome.json bunfig.toml ./
+COPY package.json tsconfig.base.json tsconfig.json biome.json ./
 COPY packages/chronocrystal/package.json packages/chronocrystal/package.json
 RUN bun install --frozen-lockfile
 
@@ -877,33 +838,197 @@ git commit -m "infra: railway deployment configuration"
 ### Task 8: Verify Full Pipeline Locally
 
 **Files:**
-- No new files
+- Create: `packages/chronocrystal/scripts/smoke-test.ts`
 
-This task verifies the Docker build works and the bot can connect to simplex-chat CLI locally.
+This task verifies the Docker build works and the bot responds correctly to messages using a local SimpleX instance as a simulated user.
 
-- [ ] **Step 1: Build Docker image**
+- [ ] **Step 1: Create smoke-test script**
+
+```typescript
+// scripts/smoke-test.ts
+// Smoke test that connects to the bot as a contact, sends a message,
+// captures the response, and uses an AI judge to verify correctness.
+
+import { ChatClient } from "simplex-chat";
+import { ChatType } from "@simplex-chat/types";
+import { getModel } from "@mariozechner/pi-ai";
+import {
+	AuthStorage,
+	ModelRegistry,
+	SettingsManager,
+	createAgentSession,
+	SessionManager,
+} from "@mariozechner/pi-coding-agent";
+
+interface TestCase {
+	message: string;
+	criteria: string;
+}
+
+const BOT_ADDRESS = process.argv[2];
+const TIMEOUT_MS = 60000;
+
+async function createJudge(testCase: TestCase, response: string): Promise<string> {
+	const authStorage = AuthStorage.create("/tmp/judge-auth.json");
+	authStorage.setRuntimeApiKey("github-copilot", process.env.GITHUB_TOKEN!);
+	const modelRegistry = ModelRegistry.inMemory(authStorage);
+	const model = getModel("github-copilot", "claude-sonnet-4");
+
+	const { session } = await createAgentSession({
+		model,
+		authStorage,
+		modelRegistry,
+		sessionManager: SessionManager.inMemory(),
+		settingsManager: SettingsManager.inMemory(),
+	});
+
+	const judgePrompt = \`You are an AI judge evaluating bot responses. Given a user message and the bot's response, determine if the response adequately addresses the user's request.
+
+User message: "\${testCase.message}"
+Bot response: "\${response}"
+
+Criteria: \${testCase.criteria}
+
+Respond with only one word: PASS or FAIL
+Then explain your reasoning in 1-2 sentences.\`;
+
+	const { promise, resolve } = Promise.withResolvers<string>();
+	let verdict = "";
+
+	session.subscribe((event) => {
+		if (event.type === "message_update" && event.assistantMessageEvent.type === "text_delta") {
+			verdict += event.assistantMessageEvent.delta;
+		}
+		if (event.type === "agent_end") {
+			resolve(verdict);
+		}
+	});
+
+	session.prompt(judgePrompt);
+	return promise;
+}
+
+async function smokeTest(): Promise<void> {
+	if (!BOT_ADDRESS) {
+		console.error("Usage: bun run scripts/smoke-test.ts <bot-address>");
+		process.exit(1);
+	}
+
+	if (!process.env.GITHUB_TOKEN) {
+		console.error("GITHUB_TOKEN environment variable required");
+		process.exit(1);
+	}
+
+	const testCases: TestCase[] = [
+		{
+			message: "What is 5 factorial?",
+			criteria: "The response must state that 5! equals 120",
+		},
+	];
+
+	console.log(`Connecting to bot at ${BOT_ADDRESS}...`);
+	const client = await ChatClient.create(process.env.SIMPLEX_WS_URL ?? "ws://localhost:5224");
+
+	let response = "";
+
+	client.msgQ.on(async (event) => {
+		if (event.type === "contactConnected") {
+			console.log("Connected to bot!");
+			await client.apiSendTextMessage(
+				ChatType.Direct,
+				event.contact.contactId,
+				testCases[0].message,
+			);
+			console.log(`Sent: ${testCases[0].message}`);
+		}
+		if (event.type === "newChatItems") {
+			for (const item of event.chatItems ?? []) {
+				const content = item?.chatItem?.content;
+				if (content?.type === "rcvMsg" && content?.msgContent?.type === "text") {
+					response += content.msgContent.text;
+				}
+			}
+		}
+	});
+
+	// Wait for response or timeout
+	await new Promise((_, reject) => {
+		setTimeout(() => reject(new Error("Timeout")), TIMEOUT_MS);
+	});
+
+	console.log(`Received: ${response}`);
+
+	// Run AI judge
+	const judgeResult = await createJudge(testCases[0], response);
+	console.log(`Judge: ${judgeResult}`);
+
+	if (judgeResult.startsWith("PASS")) {
+		console.log("SMOKE TEST PASSED");
+		process.exit(0);
+	} else {
+		console.error("SMOKE TEST FAILED");
+		process.exit(1);
+	}
+}
+
+smokeTest().catch((err) => {
+	console.error("Error:", err);
+	process.exit(1);
+});
+```
+
+Note: The smoke test uses the same pi-coding-agent infrastructure. The judge prompt can be extended for complex user stories:
+- "User asks for help debugging X"
+- "User requests code review of Y"
+- "User wants to refactor Z"
+
+Each user story becomes a test case with message + criteria.
+
+- [ ] **Step 2: Build Docker image**
 
 Run: `docker build -t chronocrystal .`
 
-Expected: Build succeeds. Image contains simplex-chat binary at `/usr/local/bin/simplex-chat` and the Bun app at `/app`.
+Expected: Build succeeds.
 
-- [ ] **Step 2: Run the container with a test GitHub token**
+- [ ] **Step 2: Run the container**
 
-Run: `docker run -e GITHUB_TOKEN=ghp_test_token -v $(pwd)/test-data:/data chronocrystal`
+Run: `docker run -e GITHUB_TOKEN=$GITHUB_TOKEN -v $(pwd)/test-data:/data --rm --detach --name chronocrystal chronocrystal`
 
-Expected: Container starts, simplex-chat CLI starts on port 5225, bot process connects and prints "Listening for messages...". It will fail to authenticate with the fake token, but the pipeline (CLI start -> bot connect -> session creation attempt) is validated.
+Expected: Container starts, simplex-chat CLI starts on port 5225, bot process connects and prints its SimpleX address.
 
-- [ ] **Step 3: Clean up test data**
+- [ ] **Step 3: Get the bot's SimpleX address**
+
+Run: `docker logs chronocrystal 2>&1 | grep "Bot address"`
+
+Expected: Prints the bot's SimpleX address (e.g., `simp_xxx`).
+
+- [ ] **Step 4: Run smoke test**
+
+Start local SimpleX, connect to the bot address, send "What is answer to 5!", verify response.
 
 ```bash
-rm -rf test-data
+# Start local simplex-chat instance
+simplex-chat -p 5224 -d ./test-data/local_simplex_db &
+SIMPLEX_PID=$!
+
+# Wait for startup
+sleep 5
+
+# Connect to bot (use the address from Step 3)
+bun run packages/chronocrystal/scripts/smoke-test.ts <bot-address>
+
+# Kill local instance
+kill $SIMPLEX_PID 2>/dev/null || true
 ```
 
-- [ ] **Step 4: Run `bun check` to verify no lint/type errors**
+Expected: Smoke test connects as a contact, sends "5!", receives "120".
 
-Run: `bun check`
+- [ ] **Step 5: Clean up**
 
-Expected: All checks pass.
+```bash
+docker stop chronocrystal 2>/dev/null || true
+rm -rf test-data
+```
 
 ---
 
@@ -952,14 +1077,24 @@ Expected: Logs show:
 - "Bot address: ..."
 - "Listening for messages..."
 
-- [ ] **Step 7: Connect to the bot via SimpleX app**
+- [ ] **Step 7: Run smoke test against Railway deployment**
 
-Open SimpleX Chat app on phone, scan the bot address QR code or paste the connection link. Send a message. Verify the bot responds with an LLM-generated reply.
+Get the Railway deployment's bot address, then run the smoke test script against it.
+
+```bash
+# Get bot address from Railway logs
+railway logs | grep "Bot address"
+
+# Run smoke test (replace <bot-address> with actual address)
+bun run packages/chronocrystal/scripts/smoke-test.ts <bot-address>
+```
+
+Expected: Smoke test connects as a contact, sends "5!", receives "120".
 
 - [ ] **Step 8: Commit the final state**
 
 ```bash
-git add -A
+git add packages/chronocrystal/
 git commit -m "chore: verify full pipeline, ready for deployment"
 ```
 
@@ -981,7 +1116,7 @@ A SimpleX chat bot that connects you to a Pi coding agent powered by GitHub Copi
 
 ## Architecture
 
-SimpleX Chat App -> simplex-chat CLI (WebSocket) -> Kawa Bot (Bun) -> Pi Coding Agent -> GitHub Copilot LLM
+Your SimpleX Client -> simplex-chat CLI (WebSocket) -> Kawa Bot (Bun) -> Pi Coding Agent -> GitHub Copilot LLM
 
 ## Quick Start
 
@@ -1021,9 +1156,8 @@ railway up
 
 ```bash
 bun install          # Install dependencies
-bun check            # Lint + type check
+bun check            # Type check + format + fix
 bun test             # Run tests
-bun fix              # Auto-fix lint issues
 ```
 
 ## How It Works
@@ -1033,6 +1167,7 @@ bun fix              # Auto-fix lint issues
 3. Each SimpleX contact gets an isolated pi-coding-agent session
 4. Messages are forwarded to the agent session with GitHub Copilot as LLM
 5. Agent responses are sent back via SimpleX
+6. Smoke tests use an AI judge to verify responses, enabling non-deterministic evaluation
 
 ---
 

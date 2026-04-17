@@ -81,7 +81,7 @@ Per-contact sessions using pi-coding-agent SDK:
 const authStorage = AuthStorage.create("/data/auth.json");
 authStorage.setRuntimeApiKey("github-copilot", process.env.GITHUB_TOKEN);
 const modelRegistry = ModelRegistry.inMemory(authStorage);
-const model = getModel("github-copilot", "claude-sonnet-4");
+const model = getModel("github-copilot", "minimax-m2.5");
 
 const { session } = await createAgentSession({
   model,
@@ -125,9 +125,11 @@ CMD ["/entrypoint.sh"]
 `entrypoint.sh`:
 ```bash
 #!/bin/bash
+
 # Start simplex-chat CLI as WebSocket server
-simplex-chat -p 5225 -d /data/simplex_db &
+simplex-chat -d /data/simplex_db -p 5225 --create-bot-display-name ChronoCrystal &
 sleep 2  # wait for CLI to start
+
 
 # Start bot
 cd /app && bun packages/chronocrystal/src/main.ts

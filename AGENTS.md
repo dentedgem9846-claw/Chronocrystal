@@ -140,10 +140,7 @@ import * as os from "node:os";
 
 ## Commands
 
-- After code changes: `bun check` (biome + tsc). Fix all errors before committing.
-- Lint only: `bun lint`
-- Format: `bun fmt`
-- Auto-fix: `bun fix`
+- After code changes: `bun check` (tsc + biome with fixes). Fix all errors before committing.
 - NEVER run the full test suite. Only run specific tests when instructed or when you modified test files.
 - If you create or modify a test file, you MUST run it and iterate until it passes.
 
