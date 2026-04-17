@@ -7,9 +7,10 @@ RUN bun install --frozen-lockfile
 
 COPY packages/chronocrystal packages/chronocrystal
 
-# Stage 2: Runtime
-FROM ubuntu:24.04
+# Stage 2: Runtime - uses oven/bun:1 as base so Bun is already installed
+FROM oven/bun:1
 
+# Install system dependencies for simplex-chat CLI
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
@@ -19,10 +20,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN curl -L -o /usr/local/bin/simplex-chat \
     "https://github.com/simplex-chat/simplex-chat/releases/latest/download/simplex-chat-ubuntu-22_04-x86_64" \
     && chmod +x /usr/local/bin/simplex-chat
-
-# Install Bun runtime
-RUN curl -fsSL https://bun.sh/install | bash
-ENV PATH="/root/.bun/bin:${PATH}"
 
 WORKDIR /app
 COPY --from=build /app /app
