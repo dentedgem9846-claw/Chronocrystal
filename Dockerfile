@@ -3,6 +3,7 @@ FROM oven/bun:1 AS build
 WORKDIR /app
 COPY package.json tsconfig.base.json tsconfig.json biome.json ./
 COPY packages/chronocrystal/package.json packages/chronocrystal/package.json
+COPY bun.lock ./
 RUN bun install --frozen-lockfile
 
 COPY packages/chronocrystal packages/chronocrystal
@@ -27,7 +28,5 @@ COPY --from=build /app /app
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-ENV SIMPLEX_WS_URL=ws://localhost:5225
-ENV DATA_DIR=/data
 
 CMD ["/entrypoint.sh"]
