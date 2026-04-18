@@ -11,6 +11,23 @@ if (!process.env.GITHUB_TOKEN) {
 	process.exit(1);
 }
 
+// Health check server for Railway on port 8080
+let isConnected = false;
+
+Bun.serve({
+	port: 8080,
+	fetch(req) {
+		const url = new URL(req.url);
+		if (url.pathname === "/health") {
+			return new Response(isConnected ? "ok" : "connecting", {
+				status: isConnected ? 200 : 503,
+			});
+		}
+		return new Response("kawa", { status: 200 });
+	},
+});
+console.log("Health check server listening on port 8080");
+
 async function main(): Promise<void> {
 	console.log("Connecting to SimpleX Chat CLI at", SIMPLEX_WS_URL);
 	const client = await ChatClient.create(SIMPLEX_WS_URL);
@@ -36,6 +53,8 @@ async function main(): Promise<void> {
 	// Enable auto-accept for incoming contact requests
 	await client.enableAddressAutoAccept(userId);
 	console.log("Auto-accept enabled for incoming contacts");
+
+	isConnected = true;
 
 	const agentManager = new AgentSessionManager({
 		githubToken: GITHUB_TOKEN,
@@ -78,6 +97,7 @@ async function main(): Promise<void> {
 		}
 	}
 
+	isConnected = false;
 	console.log("SimpleX client disconnected");
 }
 
