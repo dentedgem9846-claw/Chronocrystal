@@ -79,8 +79,6 @@ The bot exposes an HTTP server on port **8080** for Railway health checks:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `GITHUB_TOKEN` | Yes | GitHub token for Copilot LLM access |
-| `SIMPLEX_WS_URL` | No | WebSocket URL for simplex-chat CLI (default: `ws://localhost:5225`) |
-| `DATA_DIR` | No | Directory for simplex-chat database and auth (default: `/data`) |
 
 ## Development
 
@@ -94,14 +92,11 @@ bun run fix          # Auto-fix lint issues
 
 ## Smoke Test
 
-The smoke test connects to a running bot via SimpleX, sends a message, and uses an AI judge to verify the response.
+The smoke test deploys to Railway test environment, spawns a local simplex-chat CLI, connects to the production bot, sends a test prompt, and uses an AI judge to verify the response.
 
 ```bash
-# Get the bot's address from logs
-railway logs | grep "Bot address"
-
-# Run smoke test against the deployed bot
-GITHUB_TOKEN=ghp_your_token bun run packages/chronocrystal/scripts/smoke-test.ts <bot-address>
+# Run smoke test (auto-deploys to Railway test)
+GITHUB_TOKEN=ghp_your_token bun run packages/chronocrystal/scripts/smoke-test.ts
 ```
 
 ## How It Works
