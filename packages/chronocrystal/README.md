@@ -45,11 +45,34 @@ docker run -e GITHUB_TOKEN=ghp_your_token -v $(pwd)/data:/data chronocrystal
 
 ### Railway
 
+The project uses two Railway environments: **test** and **production**.
+
 ```bash
-railway link    # select chronocrystal project
+railway login
+railway init              # create project
+railway environment new test
 railway variable set GITHUB_TOKEN=ghp_your_token
+railway volume add --mount-path /data
+railway up                # deploy
+```
+
+Deploy to **test** first, run smoke tests, then promote to **production**:
+
+```bash
+railway link --environment test --service chronocrystal-bot
+railway up
+
+# After smoke tests pass:
+railway link --environment production --service chronocrystal-bot
 railway up
 ```
+
+## Health Check
+
+The bot exposes an HTTP server on port **8080** for Railway health checks:
+
+- `GET /health` -- returns `200 ok` when connected to SimpleX, `503 connecting` otherwise
+- `GET /` -- returns `200 kawa`
 
 ## Environment Variables
 
@@ -63,9 +86,22 @@ railway up
 
 ```bash
 bun install          # Install dependencies
-bun check            # Lint + type check
+bun run check        # Type check (tsgo) + lint (biome)
+bun run check:ts     # Type check only
 bun test             # Run tests
-bun fix              # Auto-fix lint issues
+bun run fix          # Auto-fix lint issues
+```
+
+## Smoke Test
+
+The smoke test connects to a running bot via SimpleX, sends a message, and uses an AI judge to verify the response.
+
+```bash
+# Get the bot's address from logs
+railway logs | grep "Bot address"
+
+# Run smoke test against the deployed bot
+GITHUB_TOKEN=ghp_your_token bun run packages/chronocrystal/scripts/smoke-test.ts <bot-address>
 ```
 
 ## How It Works
@@ -76,30 +112,11 @@ bun fix              # Auto-fix lint issues
 4. Messages are forwarded to the agent session with GitHub Copilot as LLM
 5. Agent responses are sent back via SimpleX
 
-## Technical Notes
-
-- **SimpleX Bot Server** -- Receives messages via the SimpleX network
-- **ChronoCrystal** -- TypeScript/Bun orchestrator running on Railway
-- **Kawa Agent** -- Per-user front-desk agent with custom system prompt
-- **Pi Coding Agent** -- Handles wiki updates via SDK sessions
-
-### Session Model
-
-- Each SimpleX user gets an isolated Kawa session
-- Background tasks spawn isolated Pi coding-agent sessions
-- Everything is observable and logged
-
-### Data Flow
-
-Messages flow from SimpleX to Kawa to (optionally) background agent to TiddlyWiki. Kawa can handle simple queries directly or spawn background agents for complex tasks.
-
 ## References
 
 - [SimpleX Chat Bot API](https://github.com/simplex-chat/simplex-chat/blob/stable/bots/README.md)
 - [SimpleX Chat TypeScript Client](https://github.com/simplex-chat/simplex-chat/blob/stable/packages/simplex-chat-client/typescript/README.md)
 - [Pi Coding Agent SDK](https://github.com/badlogic/pi-mono/tree/stable/packages/coding-agent/examples/sdk)
-- [Hermes Agent](https://github.com/NousResearch/hermes-agent) -- Auto-extraction patterns
-- [TiddlyWiki5](https://github.com/TiddlyWiki/TiddlyWiki5) -- The non-linear personal web notebook
 
 ---
 
