@@ -164,3 +164,36 @@ import * as os from "node:os";
 - No emojis in commits, code, or comments
 - No fluff or filler text
 - Technical prose only
+
+
+## Secrets and Credentials
+
+- **NEVER log, print, or expose full secret values** — API keys, tokens, passwords, connection strings, or any credential material. This applies to all output: logs, error messages, debug output, and tool results.
+- **Existence checks only.** When you need to verify that a secret or token exists, log only enough to confirm presence — the first 4-8 characters followed by a mask:
+
+  ```typescript
+  // BAD
+  console.log(`Token: ${token}`);
+  console.log(`Using key: ${apiKey}`);
+
+  // GOOD
+  console.log(`Token: ${token.slice(0, 4)}****`);
+  console.log(`Key present: ${apiKey.slice(0, 6)}****`);
+  ```
+
+- **Compare secrets by hash, never by value.** When you need to check if two secrets match, hash both and compare the hashes. Never compare plaintext values, and never log either value during comparison:
+
+  ```typescript
+  // BAD
+  if (receivedToken === expectedToken) { ... }
+  if (oldKey === newKey) { ... }
+
+  // GOOD
+  const hash = (value: string) =>
+    new Bun.CryptoHasher('sha256').update(value).digest('hex');
+  if (hash(receivedToken) === hash(expectedToken)) { ... }
+  if (hash(oldKey) === hash(newKey)) { ... }
+  ```
+
+- **Do not embed secrets in URLs, query strings, or headers visible in logs.** Use environment variables or secret managers for injection. If a URL contains credentials, redact them before logging.
+- **Do not commit secrets to version control.** Use `.env` files (listed in `.gitignore`) or environment variables. Never hardcode tokens, keys, or passwords in source code.
