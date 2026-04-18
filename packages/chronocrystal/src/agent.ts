@@ -1,13 +1,13 @@
+import * as path from "node:path";
 import { getModel } from "@mariozechner/pi-ai";
 import {
 	AuthStorage,
-	createAgentSession,
 	type CreateAgentSessionResult,
+	createAgentSession,
 	ModelRegistry,
 	SessionManager,
 	SettingsManager,
 } from "@mariozechner/pi-coding-agent";
-import * as path from "node:path";
 
 export interface AgentConfig {
 	githubToken: string;

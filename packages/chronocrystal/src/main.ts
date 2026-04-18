@@ -18,9 +18,7 @@ async function main(): Promise<void> {
 	// Get or create bot profile
 	const user = await client.apiGetActiveUser();
 	if (!user) {
-		console.error(
-			"No user profile found. Initialize simplex-chat CLI first with: simplex-chat -d <db_path>",
-		);
+		console.error("No user profile found. Initialize simplex-chat CLI first with: simplex-chat -d <db_path>");
 		process.exit(1);
 	}
 	const userId = user.userId;

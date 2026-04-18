@@ -1,2 +1,2 @@
-export * from "./simplex";
 export * from "./agent";
+export * from "./simplex";

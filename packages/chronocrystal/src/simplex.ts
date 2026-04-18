@@ -1,6 +1,6 @@
+import { T } from "@simplex-chat/types";
 import { ChatClient } from "simplex-chat";
 import { type ChatServer, localServer } from "simplex-chat/dist/transport";
-import { T } from "@simplex-chat/types";
 
 export interface IncomingMessage {
 	contactId: number;
