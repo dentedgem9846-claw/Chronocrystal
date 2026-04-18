@@ -1,0 +1,25 @@
+{
+	"servers": {
+		"typescript-language-server": {
+			"command": "typescript-language-server",
+			"args": ["--stdio"],
+			"fileTypes": [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"],
+			"rootMarkers": ["package.json", "tsconfig.json", "jsconfig.json"],
+			"initOptions": {
+				"hostInfo": "omp-coding-agent",
+				"preferences": {
+					"includeInlayParameterNameHints": "all",
+					"includeInlayVariableTypeHints": true,
+					"includeInlayFunctionParameterTypeHints": true
+				}
+			}
+		},
+		"biome": {
+			"command": "biome",
+			"args": ["lsp-proxy"],
+			"fileTypes": [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".json", ".jsonc"],
+			"rootMarkers": ["biome.json", "biome.jsonc"],
+			"isLinter": true
+		}
+	}
+}
