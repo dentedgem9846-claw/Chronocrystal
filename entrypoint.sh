@@ -16,7 +16,7 @@ done
 
 echo "SimpleX Chat CLI started (PID $SIMPLEX_PID)"
 
-# Start the bot process
+# Start the bot process (includes health check server on port 3000)
 cd /app
 bun packages/chronocrystal/src/main.ts &
 BOT_PID=$!
