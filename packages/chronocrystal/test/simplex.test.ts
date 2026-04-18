@@ -1,5 +1,79 @@
 import { describe, expect, test } from "bun:test";
-import { extractMessage } from "../src/simplex";
+import { extractMessage, extractMessages } from "../src/simplex";
+
+describe("extractMessages", () => {
+	test("extracts all text messages from a batch", () => {
+		const event = {
+			type: "newChatItems",
+			chatItems: [
+				{
+					chatInfo: { type: "direct", contact: { contactId: 1 } },
+					chatItem: {
+						content: { type: "rcvMsgContent", msgContent: { type: "text", text: "msg1" } },
+					},
+				},
+				{
+					chatInfo: { type: "direct", contact: { contactId: 2 } },
+					chatItem: {
+						content: { type: "rcvMsgContent", msgContent: { type: "text", text: "msg2" } },
+					},
+				},
+				{
+					chatInfo: { type: "direct", contact: { contactId: 1 } },
+					chatItem: {
+						content: { type: "rcvMsgContent", msgContent: { type: "text", text: "msg3" } },
+					},
+				},
+			],
+		};
+
+		const result = extractMessages(event as any);
+		expect(result).toEqual([
+			{ contactId: 1, text: "msg1" },
+			{ contactId: 2, text: "msg2" },
+			{ contactId: 1, text: "msg3" },
+		]);
+	});
+
+	test("returns empty array for non-newChatItems events", () => {
+		const result = extractMessages({ type: "contactConnected" } as any);
+		expect(result).toEqual([]);
+	});
+
+	test("skips non-direct chat items", () => {
+		const event = {
+			type: "newChatItems",
+			chatItems: [
+				{
+					chatInfo: { type: "group", groupInfo: { groupId: 7 } },
+					chatItem: {
+						content: { type: "rcvMsgContent", msgContent: { type: "text", text: "group msg" } },
+					},
+				},
+			],
+		};
+
+		const result = extractMessages(event as any);
+		expect(result).toEqual([]);
+	});
+
+	test("skips non-text messages", () => {
+		const event = {
+			type: "newChatItems",
+			chatItems: [
+				{
+					chatInfo: { type: "direct", contact: { contactId: 1 } },
+					chatItem: {
+						content: { type: "rcvMsgContent", msgContent: { type: "file", fileName: "photo.jpg" } },
+					},
+				},
+			],
+		};
+
+		const result = extractMessages(event as any);
+		expect(result).toEqual([]);
+	});
+});
 
 describe("extractMessage", () => {
 	test("extracts text from a direct chat item", () => {
@@ -7,9 +81,13 @@ describe("extractMessage", () => {
 			type: "newChatItems",
 			chatItems: [
 				{
+					chatInfo: {
+						type: "direct",
+						contact: { contactId: 42 },
+					},
 					chatItem: {
 						content: {
-							type: "rcvMsg",
+							type: "rcvMsgContent",
 							msgContent: {
 								type: "text",
 								text: "Hello bot!",
@@ -18,10 +96,6 @@ describe("extractMessage", () => {
 					},
 				},
 			],
-			chatInfo: {
-				type: "direct",
-				contactId: 42,
-			},
 		};
 
 		const result = extractMessage(event as any);
@@ -36,9 +110,13 @@ describe("extractMessage", () => {
 			type: "newChatItems",
 			chatItems: [
 				{
+					chatInfo: {
+						type: "group",
+						groupInfo: { groupId: 7 },
+					},
 					chatItem: {
 						content: {
-							type: "rcvMsg",
+							type: "rcvMsgContent",
 							msgContent: {
 								type: "text",
 								text: "group message",
@@ -47,10 +125,6 @@ describe("extractMessage", () => {
 					},
 				},
 			],
-			chatInfo: {
-				type: "group",
-				groupId: 7,
-			},
 		};
 
 		const result = extractMessage(event as any);
@@ -62,9 +136,13 @@ describe("extractMessage", () => {
 			type: "newChatItems",
 			chatItems: [
 				{
+					chatInfo: {
+						type: "direct",
+						contact: { contactId: 42 },
+					},
 					chatItem: {
 						content: {
-							type: "rcvMsg",
+							type: "rcvMsgContent",
 							msgContent: {
 								type: "file",
 								fileName: "photo.jpg",
@@ -73,10 +151,6 @@ describe("extractMessage", () => {
 					},
 				},
 			],
-			chatInfo: {
-				type: "direct",
-				contactId: 42,
-			},
 		};
 
 		const result = extractMessage(event as any);
@@ -88,14 +162,18 @@ describe("extractMessage", () => {
 		expect(result).toBeNull();
 	});
 
-	test("extracts text from sndMsg (sent messages)", () => {
+	test("extracts text from sndMsgContent (sent messages)", () => {
 		const event = {
 			type: "newChatItems",
 			chatItems: [
 				{
+					chatInfo: {
+						type: "direct",
+						contact: { contactId: 99 },
+					},
 					chatItem: {
 						content: {
-							type: "sndMsg",
+							type: "sndMsgContent",
 							msgContent: {
 								type: "text",
 								text: "I sent this",
@@ -104,10 +182,6 @@ describe("extractMessage", () => {
 					},
 				},
 			],
-			chatInfo: {
-				type: "direct",
-				contactId: 99,
-			},
 		};
 
 		const result = extractMessage(event as any);
@@ -115,5 +189,42 @@ describe("extractMessage", () => {
 			contactId: 99,
 			text: "I sent this",
 		});
+	});
+
+	test("skips items with missing chatInfo or contact", () => {
+		const event = {
+			type: "newChatItems",
+			chatItems: [
+				{
+					chatItem: {
+						content: {
+							type: "rcvMsgContent",
+							msgContent: { type: "text", text: "no chatInfo" },
+						},
+					},
+				},
+				{
+					chatInfo: { type: "direct" },
+					chatItem: {
+						content: {
+							type: "rcvMsgContent",
+							msgContent: { type: "text", text: "no contact" },
+						},
+					},
+				},
+				{
+					chatInfo: { type: "direct", contact: {} },
+					chatItem: {
+						content: {
+							type: "rcvMsgContent",
+							msgContent: { type: "text", text: "contact missing contactId" },
+						},
+					},
+				},
+			],
+		};
+
+		const result = extractMessage(event as any);
+		expect(result).toBeNull();
 	});
 });
