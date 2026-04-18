@@ -1,0 +1,9 @@
+[submodule "references/oh-my-pi"]
+	path = references/oh-my-pi
+	url = https://github.com/can1357/oh-my-pi.git
+[submodule "references/pi-mono"]
+	path = references/pi-mono
+	url = https://github.com/badlogic/pi-mono.git
+[submodule "references/pi-telegram"]
+	path = references/pi-telegram
+	url = https://github.com/badlogic/pi-telegram.git
